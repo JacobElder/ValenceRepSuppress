@@ -1,0 +1,63 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+library(lmerTest)
+library(ggeffects)
+library(dplyr)
+library(ggplot2)
+library(sjPlot)
+```
+
+
+```{r}
+repetSupDf <- read.csv("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/repetSupDf.csv")
+```
+
+
+```{r}
+simEnhance <- lmer(scale(selfResp)~ scale(Sim) * valence + (valence + scale(Sim) |subID) + (1 | trait), data = repetSupDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(simEnhance)
+ggpredict(simEnhance, c("Sim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
+```
+
+```{r}
+tab_model(simEnhance, show.stat=T, show.r2 = T, show.se = T, show.ci = F, pred.labels = c("Intercept", "Similarity", "Valence (Pos)", "Indegree", "Outdegree x Valence (Pos)", "Indegree x Valence (Pos)"))
+
+, string.pred = c("Fixed Effects"), string.est = "Coef.", string.se = "SE", string.stat = "t", digits = 3, emph.p = F, dv.labels = "Study 2: Favorability Model", file = paste0(tableDir,"S2_Fav.doc") )
+```
+
+
+```{r}
+repetSupDf$
+simEnhance2 <- lmer(scale(selfResp)~ scale(barSim) * valence  + (valence + scale(barSim) |subID) + (1 | trait), data = repetSupDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(simEnhance2)
+ggpredict(simEnhance2, c("barSim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
+```
+
+```{r}
+simEnhance3 <- lmer(scale(selfResp)~ scale(ukwacSim) * valence + (valence + scale(ukwacSim) |subID) + (1 | trait), data = repetSupDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(simEnhance3)
+ggpredict(simEnhance3, c("ukwacSim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
+```
+
+```{r}
+simEnhance4 <- lmer(scale(selfResp)~ scale(en100Sim) * valence + (valence + scale(en100Sim) |subID) + (1 | trait), data = repetSupDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(simEnhance4)
+ggpredict(simEnhance4, c("en100Sim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
+```
+
+```{r}
+simEnhance5 <- lmer(scale(selfResp)~ scale(tasaSim) * valence + (valence + scale(tasaSim) |subID) + (1 | trait), data = repetSupDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(simEnhance5)
+ggpredict(simEnhance5, c("tasaSim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
+```
+
+

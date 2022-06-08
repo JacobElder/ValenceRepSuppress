@@ -1,0 +1,216 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+```{r}
+library(dplyr)
+library(igraph)
+```
+
+
+load raw data
+```{r}
+rawDf <- read.csv("/Volumes/Research Project/fMRI_trait network/fMRI level 1 analysis/3 column format/input/merged behaviral raw data.csv")
+rawDf <- rawDf[!is.na(rawDf$trialNum),]
+cleanDf <- read.csv("/Volumes/Research Project/fMRI_trait network/fMRI level 1 analysis/3 column format/ratingDfFull.csv")
+```
+```{r}
+setwd("~/Google Drive/Volumes/")
+posDf <- read.csv("./Research Project/Trait Network_Behaviral/generating network/output/adjacencyMatrix_p.csv")
+posMat <- as.matrix(posDf)
+posGraph <- graph.adjacency(posMat)
+posSim <- similarity.invlogweighted(posGraph)
+
+negDf <- read.csv("./Research Project/Trait Network_Behaviral/generating network/output/adjacencyMatrix_n.csv")
+negMat <- as.matrix(negDf)
+negGraph <- graph.adjacency(negMat)
+negSim <- similarity.invlogweighted(negGraph)
+```
+
+```{r}
+
+traitAttP <- read.csv("/Volumes/Research Project/Trait Network_Behaviral/generating network/output/allPosCents.csv")
+traitAttN <- read.csv("/Volumes/Research Project/Trait Network_Behaviral/generating network/output/allNegCents.csv")
+fullDf <- merge(rawDf, cleanDf[, c("subID", "trait", "selfResp","otherResp", "valence")], by=c("subID","trait"), all.x = TRUE)
+traitAttN$cluster <- traitAttN$cluster+4
+traitAtt <- rbind(traitAttP,traitAttN)
+traitAtt$Idx <- 1:296
+fullDf$valence <- NULL
+#fullDf <- merge(fullDf, traitAtt[,c("trait", "cluster")], by = c("trait"), all.x=TRUE)
+fullDf <- merge(fullDf, traitAtt, by = c("trait"), all.x=TRUE)
+fullDf <- fullDf[order(fullDf$subID, fullDf$trialNum),]
+
+```
+
+```{r}
+library(LSAfun)
+setwd("/Volumes/Research Project/TraitSimilarity/SemanticSpaces/")
+curFiles <- list.files()
+lapply(curFiles, load)
+```
+
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+fullDf <- fullDf %>% distinct(subID, trialNum, .keep_all = TRUE)
+
+x = c("subID", "trialTotal", "trialInRun", "runNum", "NtP", "PtN", "Same", "Sim", "first", "selfResp", "otherResp", "selfRespDif", "pos", "neg", "clust", "clustRep", "wordPresent", "triggerStart", "barSim", "ukwacSim", "tasaSim", "en100Sim", "Idx")
+rsDf <- data.frame(matrix(ncol = length(x), nrow = 0))
+
+for(i in 1:nrow(fullDf)){
+  
+  subID <- fullDf$subID[i]
+  tt <- fullDf$trialNum[i]
+  tr <- fullDf$trialInRun[i]
+  wp <- fullDf$wordPresentStart[i]
+  ts <- fullDf$triggerStartTime[i]
+  sr <- fullDf$selfResp[i]
+  or <- fullDf$otherResp[i]
+  rn <- fullDf$runNum[i]
+  cl <- fullDf$cluster[i]
+  if(fullDf$valence[i] == "negative"){
+    pv <- 1
+    nv <- 0
+  }else if(fullDf$valence[i] == "positive"){
+    nv <- 1
+    pv <- 0
+  }
+  curSim <- NA
+  semSim <- NA
+  
+  if(fullDf$trialInRun[i]==1){
+    ft <- 1
+    same <- 0
+    ptn <- NA
+    ntp <- NA
+    curSim <- NA
+    cr <- NA
+    ss <- NA
+    srd <- NA
+  } else {
+    ft <- 0
+    srd <- fullDf$selfResp[i] - fullDf$selfResp[i-1]
+  }
+  
+  if(ft != 1){
+    if(fullDf$valence[i] == "negative" & fullDf$valence[i-1] == "negative"){
+      same <- 1
+      ptn <- 0
+      ntp <- 0
+    } else if (fullDf$valence[i] == "positive" & fullDf$valence[i-1] == "positive"){
+      same <- 1
+      ptn <- 0
+      ntp <- 0
+    } else if (fullDf$valence[i] == "positive" & fullDf$valence[i-1] == "negative"){
+      ptn <- 1
+      ntp <- 0
+      same <- 0
+    } else if (fullDf$valence[i] == "negative" & fullDf$valence[i-1] == "positive"){
+      ntp <- 1
+      ptn <- 0
+      same <- 0
+    }
+    
+  if(fullDf$cluster[i]==fullDf$cluster[i-1]){
+    cr <- 1
+  } else {
+    cr <- 0
+  }
+    
+  prevT <- fullDf$Idx[i-1]
+  curT <- fullDf$Idx[i]
+  
+  if(ft==0){
+    
+    if(prevT < 149 & curT < 149){
+      curSim <- posSim[prevT, curT]
+    }else if(prevT > 148 & curT > 148){
+      prevT <- prevT - 148
+      curT <- curT - 148
+      curSim <- negSim[prevT, curT]
+    }else{
+      curSim <- NA
+    }
+    
+    barSim <- Cosine(tolower(fullDf$trait[i]), tolower(fullDf$trait[i-1]), tvectors=baroni)
+    ukwacSim <- Cosine(tolower(fullDf$trait[i]), tolower(fullDf$trait[i-1]), tvectors=ukwac)
+    tasaSim <- Cosine(tolower(fullDf$trait[i]), tolower(fullDf$trait[i-1]), tvectors=TASA)
+    en100Sim <- Cosine(tolower(fullDf$trait[i]), tolower(fullDf$trait[i-1]), tvectors=EN_100k)
+    
+  }
+
+  
+  
+    
+  }
+  
+  curRow <- c(subID, tt, tr, rn, ntp, ptn, same, curSim, ft, sr, or, srd, pv, nv, cl, cr, wp, ts, barSim, ukwacSim, tasaSim, en100Sim, fullDf$Idx[i])
+  
+  rsDf <- rbind(rsDf, curRow)
+  
+}
+
+colnames(rsDf) <- x
+```
+
+```{r}
+count <- c()
+sc<-0
+for(i in nrow(rsDf):1 ){
+  
+  ss<-0
+  dr <- 0
+  
+  if(rsDf$Same[i]==1){
+    count <- c(count, 1)
+    sc <- sum(count)
+  } else {
+    count <- 0
+    sc <- 0
+  }
+
+  
+  rsDf$tempDec[i] <- sc
+  rsDf$decSim[i] <- rsDf$Sim[i] / sc
+  
+}
+```
+
+```{r}
+for(i in 1:nrow(rsDf)){
+  
+  ds <- 0
+  ss<-0
+  dr <- 0
+  difRange <- 0
+  
+  if(!is.na(rsDf$Sim[i]) ){
+    lastDif <- last(which(rsDf$Same[1:i]==0))
+    
+   difRange <- i - lastDif
+   startSame <- lastDif + 1
+   if(difRange > 0){
+    
+    dr <- difRange
+    ss <- sum(rsDf$Sim[startSame:i]) / difRange
+    ds <- sum(rsDf$decSim[startSame:i]) / difRange
+    
+    # figure out how to do a time-based memory sort of RS
+    
+   }
+  }
+
+  
+  rsDf$addSim[i] <- ss
+  rsDf$difRange[i] <- difRange
+  rsDf$decSimSum[i] <- ds
+  
+}
+```
+
+
+```{r}
+rsDf <- merge(rsDf, traitAtt, by = "Idx")
+rsDf <- rsDf[order(rsDf$subID, rsDf$trialTotal),]
+write.csv(rsDf, "/Volumes/Research Project/fMRI_trait network/Repetition Suppression/repetSupDf.csv", row.names = FALSE)
+```
+
