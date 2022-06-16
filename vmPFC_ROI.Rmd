@@ -1,0 +1,43 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+```{r}
+vmPFCpos <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCpos_RSComb_cope11.txt", quote="\"", comment.char="")
+vmPFCneg <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCneg_RSComb_cope12.txt", quote="\"", comment.char="")
+pd<-cbind(vmpfc=vmPFCpos,valence="p")
+nd<-cbind(vmpfc=vmPFCneg,valence="n")
+df<-rbind(pd,nd)
+colnames(df) <- c("vmpfc","valence")
+t.test(vmpfc~valence,paired=TRUE,data = df)
+psych::describeBy(df$vmpfc, df$valence)
+```
+
+```{r}
+library(ez)
+library(ggplot2)
+
+vmPFCposSelf <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCpos_RSDist_cope1.txt", quote="\"", comment.char="")
+vmPFCnegSelf <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCneg_RSDist_cope2.txt", quote="\"", comment.char="")
+vmPFCposSim <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCpos_RS_cope1.txt", quote="\"", comment.char="")
+vmPFCnegSim <- read.table("/Volumes/Research Project/fMRI_trait network/Repetition Suppression/vmPFC ROI/vmPFCneg_RS_cope2.txt", quote="\"", comment.char="")
+
+pdse<-cbind(vmpfc=vmPFCposSelf,valence="p",type="self",subID=unique(fullDf$subID))
+ndse<-cbind(vmpfc=vmPFCnegSelf,valence="n",type="self",subID=unique(fullDf$subID))
+pdsi<-cbind(vmpfc=vmPFCposSim,valence="p",type="sim",subID=unique(fullDf$subID))
+ndsi<-cbind(vmpfc=vmPFCnegSim,valence="n",type="sim",subID=unique(fullDf$subID))
+
+df<-rbind(pdse,ndse,pdsi,ndsi)
+colnames(df) <- c("vmpfc","valence","type","subID")
+ezANOVA(data=df,
+        dv=vmpfc,
+        wid=subID,
+        within=.(valence, type))
+psych::describeBy(df$vmpfc, df$valence)
+
+plotDf <-Rmisc::summarySE(data=df, measurevar = "vmpfc", groupvars=c("type","valence"))
+ggplot(plotDf, aes(x=valence, y=vmpfc, fill=type)) +
+    geom_bar(stat='identity', position='dodge') + jtools::theme_apa()
+```
+

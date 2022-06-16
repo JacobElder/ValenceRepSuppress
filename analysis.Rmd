@@ -60,4 +60,49 @@ summary(simEnhance5)
 ggpredict(simEnhance5, c("tasaSim", "valence")) %>% plot(show.title=FALSE) + jtools::theme_apa() + xlab("Similarity") + ylab("Self-Evaluation")
 ```
 
+# Replicating Similarity Predicting Distance Effect Across Word Embeddings
 
+
+```{r}
+baroniDistM <- lmer(scale(dist)~ scale(sim) + ( scale(sim) |subID) , data = fbaroniDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(baroniDistM)
+
+ukwacDistM <- lmer(scale(dist)~ scale(sim) + ( scale(sim) |subID) , data = fukwacDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(ukwacDistM)
+
+EN_100kDistM <- lmer(scale(dist)~ scale(sim) + ( scale(sim) |subID) , data = fEN_100kDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(EN_100kDistM)
+```
+
+```{r}
+fbaroniDf$pair <- as.factor(fbaroniDf$pair)
+fukwacDf$pair <- as.factor(fukwacDf$pair)
+fEN_100kDf$pair <- as.factor(fEN_100kDf$pair)
+
+contrasts(fbaroniDf$pair) <- contr.sum(3)
+contrasts(fukwacDf$pair) <- contr.sum(3)
+contrasts(fukwacDf$pair) <- contr.sum(3)
+
+baroniDistM <- lmer(scale(dist)~ scale(sim)*pair + ( scale(sim)+pair |subID) , data = fbaroniDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(baroniDistM)
+
+ukwacDistM <- lmer(scale(dist)~ scale(sim)*pair + ( scale(sim)+pair |subID) , data = fukwacDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(ukwacDistM)
+
+EN_100kDistM <- lmer(scale(dist)~ scale(sim)*pair + ( scale(sim)+pair |subID) , data = fEN_100kDf, control=lmerControl(optimizer="bobyqa",
+                                 optCtrl=list(maxfun=2e5)))
+summary(EN_100kDistM)
+```
+
+```{r}
+ggpredict(baroniDistM, c("sim","pair")) %>% plot(show.title=FALSE)
+
+ggpredict(ukwacDistM, c("sim","pair")) %>% plot(show.title=FALSE)
+
+ggpredict(EN_100kDistM, c("sim","pair")) %>% plot(show.title=FALSE)
+```

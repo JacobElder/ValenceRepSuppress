@@ -44,9 +44,12 @@ fullDf <- fullDf[order(fullDf$subID, fullDf$trialNum),]
 
 ```{r}
 library(LSAfun)
+library(tidyverse)
 setwd("/Volumes/Research Project/TraitSimilarity/SemanticSpaces/")
-curFiles <- list.files()
-lapply(curFiles, load)
+#lapply(curFiles, load)
+load("TASA.rda")
+list.files(pattern = ".rda") %>%
+  map(load)
 ```
 
 
@@ -213,4 +216,118 @@ rsDf <- merge(rsDf, traitAtt, by = "Idx")
 rsDf <- rsDf[order(rsDf$subID, rsDf$trialTotal),]
 write.csv(rsDf, "/Volumes/Research Project/fMRI_trait network/Repetition Suppression/repetSupDf.csv", row.names = FALSE)
 ```
+
+```{r}
+
+fullDf <- fullDf[order(fullDf$subID, fullDf$trialNum),]
+miss25 <- setdiff(traitAtt$Idx, fullDf$Idx[fullDf$subID==25])
+
+i<-unique(fullDf$subID)[1]
+  tasaPresent <- traitAtt$trait[which(tolower(traitAtt$trait) %in% rownames(TASA))]
+  baroniPresent <- traitAtt$trait[which(tolower(traitAtt$trait) %in% rownames(baroni))]
+  ukwacPresent <- traitAtt$trait[which(tolower(traitAtt$trait) %in% rownames(ukwac))]
+  EN_100kPresent <- traitAtt$trait[which(tolower(traitAtt$trait) %in% rownames(EN_100k))]
+  
+  baroniMat <- multicos(tolower(baroniPresent), tvectors = baroni)
+  TASAMat <- multicos(tolower(tasaPresent), tvectors = TASA)
+  ukwacMat <- multicos(tolower(ukwacPresent), tvectors = ukwac)
+  EN_100kMat <- multicos(tolower(EN_100kPresent), tvectors = EN_100k)
+  
+  baroniSims <- as.vector(t(baroniMat[lower.tri(baroniMat)]))
+  TASASims <- as.vector(t(TASAMat[lower.tri(TASAMat)]))
+  ukwacSims <- as.vector(t(ukwacMat[lower.tri(ukwacMat)]))
+  EN_100kSims <- as.vector(t(EN_100kMat[lower.tri(EN_100kMat)]))
+  
+  tasaInds <- which(tolower(traitAtt$trait) %in% rownames(TASA))
+  baroniInds <- which(tolower(traitAtt$trait) %in% rownames(baroni))
+  ukwacInds <- which(tolower(traitAtt$trait) %in% rownames(ukwac))
+  EN_100kInds <- which(tolower(traitAtt$trait) %in% rownames(EN_100k))
+  
+  ftasaDf <- data.frame()
+  fbaroniDf <- data.frame()
+  fukwacDf <- data.frame()
+  fEN_100kDf <- data.frame()
+
+for(i in unique(fullDf$subID)){
+  
+  subDf <- fullDf[fullDf$subID==i,]
+  
+  if(i==25){
+    subDf[ nrow(subDf) + 9 , ] <- NA
+    subDf$Idx[288:296] <- miss25
+  }
+  
+  tasaDf <- subDf[subDf$Idx %in% tasaInds,]
+  baroniDf <- subDf[subDf$Idx %in% baroniInds,]
+  ukwacDf <- subDf[subDf$Idx %in% ukwacInds,]
+  EN_100kDf <- subDf[subDf$Idx %in% EN_100kInds,]
+  
+  d1<-dist(tasaDf$selfResp)
+  d2<-dist(baroniDf$selfResp)
+  d3<-dist(ukwacDf$selfResp)
+  d4<-dist(EN_100kDf$selfResp)
+  
+  tasaDists <- as.vector(t((d1)))
+  baroniDists <- as.vector(t((d2)))
+  ukwacDists <- as.vector(t((d3)))
+  EN_100kDists <- as.vector(t((d4)))
+  
+  if(length(tasaDists)!=length(TASASims)){
+    print("I'm sad :(")
+    print(i)
+    break
+  }
+  
+  ctasaDf <- cbind(i, tasaDists,TASASims,which(lower.tri(d1),arr.ind=TRUE))
+  cbaroniDf <- cbind(i, baroniDists, baroniSims,which(lower.tri(d2),arr.ind=TRUE))
+  cukwacDf <- cbind(i, ukwacDists, ukwacSims,which(lower.tri(d3),arr.ind=TRUE))
+  cEN_100kDf <- cbind(i, EN_100kDists, EN_100kSims,which(lower.tri(d4),arr.ind=TRUE))
+  
+  ftasaDf <- rbind(ftasaDf, ctasaDf)
+  fbaroniDf <- rbind(fbaroniDf, cbaroniDf)
+  fukwacDf <- rbind(fukwacDf, cukwacDf)
+  fEN_100kDf <- rbind(fEN_100kDf, cEN_100kDf)
+
+}
+  
+  colnames(ftasaDf) <- c("subID","dist","sim","ind1","ind2")
+  colnames(fbaroniDf) <- c("subID","dist","sim","ind1","ind2")
+  colnames(fukwacDf) <- c("subID","dist","sim","ind1","ind2")
+  colnames(fEN_100kDf) <- c("subID","dist","sim","ind1","ind2")
+  
+  tasaInds <- data.frame(ind = 1:length(tasaPresent), trait = tasaPresent, Idx = tasaInds)
+  tasaInds$val <- ifelse(tasaInds$Idx>148, "n", "p")
+  baroniInds <- data.frame(ind = 1:length(baroniPresent), trait = baroniPresent, Idx = baroniInds)
+  baroniInds$val <- ifelse(baroniInds$Idx>148, "n", "p")
+  ukwacInds <- data.frame(ind = 1:length(ukwacPresent), trait = ukwacPresent, Idx = ukwacInds)
+  ukwacInds$val <- ifelse(ukwacInds$Idx>148, "n", "p")
+  EN_100kInds <- data.frame(ind = 1:length(EN_100kPresent), trait = EN_100kPresent, Idx = EN_100kInds)
+  EN_100kInds$val <- ifelse(EN_100kInds$Idx>148, "n", "p")
+  
+  ftasaDf<-merge(ftasaDf, tasaInds, by.x="ind1",by.y="ind")
+  ftasaDf<-merge(ftasaDf, tasaInds, by.x="ind2",by.y="ind")
+  ftasaDf$pair <- paste0(ftasaDf$val.x,ftasaDf$val.y)
+  
+  fbaroniDf<-merge(fbaroniDf, baroniInds, by.x="ind1",by.y="ind")
+  fbaroniDf<-merge(fbaroniDf, baroniInds, by.x="ind2",by.y="ind")
+    fbaroniDf$pair <- paste0(fbaroniDf$val.x,fbaroniDf$val.y)
+  
+  fukwacDf<-merge(fukwacDf, ukwacInds, by.x="ind1",by.y="ind")
+  fukwacDf<-merge(fukwacDf, ukwacInds, by.x="ind2",by.y="ind")
+    fukwacDf$pair <- paste0(fukwacDf$val.x,fukwacDf$val.y)
+  
+  fEN_100kDf<-merge(fEN_100kDf, EN_100kInds, by.x="ind1",by.y="ind")
+  fEN_100kDf<-merge(fEN_100kDf, EN_100kInds, by.x="ind2",by.y="ind")
+    fEN_100kDf$pair <- paste0(fEN_100kDf$val.x,fEN_100kDf$val.y)
+```
+
+```{r}
+write.csv(fbaroniDf, "/Volumes/Research Project/fMRI_trait network/Repetition Suppression/baroniDf.csv", row.names = FALSE)
+
+write.csv(fukwacDf, "/Volumes/Research Project/fMRI_trait network/Repetition Suppression/ukwacDf.csv", row.names = FALSE)
+
+write.csv(fEN_100kDf, "/Volumes/Research Project/fMRI_trait network/Repetition Suppression/EN_100kDf.csv", row.names = FALSE)
+```
+
+
 
